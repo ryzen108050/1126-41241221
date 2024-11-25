@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>會員註冊與登入</title>
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-database-compat.js"></script>
+  <style>
+    /* 設定整個頁面置中 */
+    body {
+      margin: 0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      background-color: #f5f5f5;
+      font-family: Arial, sans-serif;
+    }
+
+    /* 外框容器設定 */
+    .container {
+      text-align: center;
+      padding: 20px;
+      background-color: #fff;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+      border-radius: 10px;
+      width: 100%;
+      max-width: 400px;
+    }
+
+    h1 {
+      margin-bottom: 20px;
+      color: #333;
+    }
+
+    button {
+      margin: 10px;
+      padding: 10px 20px;
+      border: none;
+      border-radius: 5px;
+      font-size: 16px;
+      cursor: pointer;
+      transition: background-color 0.3s;
+    }
+
+    button:hover {
+      background-color: #ddd;
+    }
+
+    button#registerBtn {
+      background-color: #4caf50;
+      color: white;
+    }
+
+    button#loginBtn {
+      background-color: #008cba;
+      color: white;
+    }
+
+    #userInfo {
+      margin-top: 20px;
+    }
+
+    #userPhoto {
+      margin-bottom: 10px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>會員註冊與登入</h1>
+    <button id="registerBtn">註冊</button>
+    <button id="loginBtn">登入</button>
+    <div id="userInfo" style="display: none;">
+      <h2>使用者資訊</h2>
+      <img id="userPhoto" alt="使用者照片" width="100" style="border-radius: 50%;">
+      <p id="userName"></p>
+      <p id="userEmail"></p>
+      <p id="lastLogin"></p>
+      <button onclick="signOut()">登出</button>
+    </div>
+  </div>
+
+  <script>
+    // Firebase 設定
+    const firebaseConfig = {
+      apiKey: "AIzaSyDQF04btvgEfKe8_qvUhtSHODDoG5DwnEs",
+      authDomain: "index-b8d66.firebaseapp.com",
+      databaseURL: "https://index-b8d66-default-rtdb.asia-southeast1.firebasedatabase.app",
+      projectId: "index-b8d66",
+      storageBucket: "index-b8d66.firebasestorage.app",
+      messagingSenderId: "833317052451",
+      appId: "1:833317052451:web:8fc90c272ee9d16afc9196"
+    };
+
+    // 初始化 Firebase
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    const database = firebase.database();
+
+    // 註冊按鈕
+    document.getElementById("registerBtn").addEventListener("click", registerUser);
+
+    // 登入按鈕
+    document.getElementById("loginBtn").addEventListener("click", loginUser);
+
+    // 註冊功能
+    function registerUser() {
+      const provider = new firebase.auth.GoogleAuthProvider();
+      auth.signInWithPopup(provider)
+        .then((result) => {
+          const user = result.user;
+
+          // 檢查是否已註冊
+          const userRef = database.ref('users/' + user.uid);
+          userRef.once('value').then((snapshot) => {
+            if (snapshot.exists()) {
+              alert("此帳戶已註冊！");
+            } else {
+              const userData = {
+                name: user.displayName,
+                email: user.email,
+                photoURL: user.photoURL,
+                registerTime: new Date().toISOString(),
+                lastLogin: new Date().toISOString()
+              };
+              userRef.set(userData);
+              alert("註冊成功！");
+            }
+          });
+        })
+        .catch((error) => {
+          console.error("註冊錯誤:", error);
+        });
+    }
+
+    // 登入功能
+    function loginUser() {
+      const provider = new firebase.auth.GoogleAuthProvider();
+      auth.signInWithPopup(provider)
+        .then((result) => {
+          const user = result.user;
+
+          // 更新最後登入時間
+          const lastLoginTime = new Date().toISOString();
+          const userRef = database.ref('users/' + user.uid);
+
+          userRef.once('value').then((snapshot) => {
+            if (snapshot.exists()) {
+              userRef.update({ lastLogin: lastLoginTime });
+              const data = snapshot.val();
+              document.getElementById("userName").textContent = `名稱: ${data.name}`;
+              document.getElementById("userEmail").textContent = `電子郵件: ${data.email}`;
+              document.getElementById("userPhoto").src = data.photoURL;
+              document.getElementById("lastLogin").textContent = `最後登入: ${lastLoginTime}`;
+              document.getElementById("userInfo").style.display = "block";
+            } else {
+              alert("此帳戶尚未註冊！");
+            }
+          });
+        })
+        .catch((error) => {
+          console.error("登入錯誤:", error);
+        });
+    }
+
+    // 登出功能
+    function signOut() {
+      auth.signOut().then(() => {
+        document.getElementById("userInfo").style.display = "none";
+        alert("已成功登出！");
+      });
+    }
+  </script>
+</body>
+</html>
